@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>割り勘計算ツール</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        /* Tabs */
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .tab-button {
+            flex: 1;
+            padding: 15px 0;
+            text-align: center;
+            cursor: pointer;
+            background-color: #ecf0f1;
+            color: #555;
+            border: none;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            transition: background-color 0.3s, color 0.3s;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        .tab-button.active {
+            background-color: #007bff;
+            color: white;
+            border-bottom: none;
+        }
+        .tab-button:hover:not(.active) {
+            background-color: #dde1e6;
+        }
+        .tab-content {
+            display: none;
+            padding-top: 15px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Common styles for member and payment items */
+        .item-row {
+            background-color: #fdfdfd;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .item-row div {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap; /* スマホで項目が横に長くなるのを防ぐ */
+            gap: 5px;
+        }
+        .item-row label {
+            min-width: 80px;
+            font-weight: 600;
+            color: #444;
+        }
+        input[type="text"], input[type="number"], select {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px; /* モバイルでのズーム防止のため固定値に */
+            background-color: #fcfcfc;
+            min-width: 100px; /* 最小幅を設定 */
+        }
+        input[type="number"] {
+            -moz-appearance: textfield; /* Firefox */
+        }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .add-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 10px;
+            display: block;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            transition: background-color 0.2s ease;
+        }
+        .add-button:hover {
+            background-color: #218838;
+        }
+        .delete-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 10px;
+            transition: background-color 0.2s ease;
+        }
+        .delete-button:hover {
+            background-color: #c82333;
+        }
+        .member-row .delete-button, .payment-row .delete-button {
+            margin-left: auto; /* 右寄せ */
+        }
+
+        .reset-button {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+            display: block;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            transition: background-color 0.2s ease;
+        }
+        .reset-button:hover {
+            background-color: #5a6268;
+        }
+
+        .result-area {
+            background-color: #e9f5ff;
+            border: 1px solid #cce5ff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            word-wrap: break-word;
+        }
+        .result-area h3 {
+            color: #0056b3;
+            margin-top: 0;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .result-area p {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 5px 0;
+            flex-grow: 1; /* 親要素の幅に合わせて広がる */
+        }
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            white-space: nowrap;
+            min-width: unset; /* labelのmin-widthをリセット */
+            font-weight: normal; /* labelのフォントをリセット */
+        }
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 5px;
+            width: auto;
+            accent-color: #007bff;
+        }
+        .member-actual-cost {
+            min-width: 120px;
+            text-align: right;
+            font-weight: bold;
+            color: #0056b3;
+        }
+        .payment-summary {
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 5px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .payment-summary span {
+            padding-right: 10px;
+        }
+
+        .storage-info {
+            text-align: center;
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+        .storage-info strong {
+            color: #007bff;
+        }
+
+        /* Voice Input Button Specific Styles */
+        .voice-input-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.2em;
+            margin-left: 10px; /* 入力欄との間に少しスペースを空ける */
+            display: flex; /* アイコンとテキストを中央揃えにするため */
+            align-items: center;
+            gap: 5px; /* アイコンとテキストの間隔 */
+            transition: background-color 0.2s ease;
+            white-space: nowrap; /* ボタン内のテキストが改行されないように */
+        }
+        .voice-input-button:hover {
+            background-color: #0056b3;
+        }
+
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+            .tab-button {
+                font-size: 1em;
+                padding: 12px 0;
+            }
+            .item-row {
+                padding: 10px;
+            }
+            .item-row div {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+            .item-row label {
+                width: 100%;
+                margin-bottom: 0px;
+            }
+            input[type="text"], input[type="number"], select {
+                width: 100%;
+                margin: 0;
+                font-size: 16px;
+            }
+            .delete-button {
+                margin-left: 0;
+                margin-top: 10px;
+                width: 100%;
+            }
+            .member-row .delete-button, .payment-row .delete-button {
+                margin-left: 0;
+                width: 100%;
+            }
+            .calculate-button {
+                padding: 12px 20px;
+                font-size: 1em;
+            }
+            .checkbox-group {
+                width: 100%;
+            }
+            .payment-summary {
+                flex-direction: column;
+                gap: 5px;
+            }
+            /* Adjust voice input button for smaller screens */
+            .voice-input-button {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 10px;
+                justify-content: center; /* 中央揃え */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>割り勘計算ツール</h1>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'memberTab')">メンバー設定</button>
+            <button class="tab-button" onclick="openTab(event, 'paymentTab')">支払項目</button>
+        </div>
+
+        <div id="memberTab" class="tab-content active">
+            <h2>メンバー設定</h2>
+            <div id="memberList">
+                </div>
+            <button type="button" class="add-button" onclick="addMemberRow()">メンバー追加</button>
+        </div>
+
+        <div id="paymentTab" class="tab-content">
+            <h2>支払項目</h2>
+
+            <div id="paymentList">
+                </div>
+            <button type="button" class="add-button" onclick="addPaymentRow()">支払項目追加</button>
+        </div>
+
+        <div class="result-area" id="resultArea">
+            <h3>計算結果</h3>
+            <p>ここに計算結果が表示されます。</p>
+        </div>
+
+        <div class="storage-info" id="storageInfo">
+            </div>
+
+        <button type="button" class="reset-button" onclick="resetAllData()">全てリセット</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                loadDataFromLocalStorage(); // ページロード時にローカルストレージからデータを読み込む
+                updateMemberOptions(); // メンバーのドロップダウンを更新
+                updateResponsibilityCheckboxes(true); // 負担者のチェックボックスを更新し、全てチェック
+                calculate(); // 初期表示で計算
+                displayStorageInfo(); // データ保存情報の表示
+            } catch (e) {
+                console.error("Initialization failed:", e);
+                alert("ページの初期化中にエラーが発生しました。データをリセットしてやり直してください。");
+                // エラーが発生した場合、最低限の表示はできるようにデフォルトデータを読み込む
+                // 注意: これまでの試行錯誤でローカルストレージに不正なデータが残っている可能性があるので、
+                // 強制的にリセットしてからデフォルトをロードするように変更
+                localStorage.removeItem(LOCAL_STORAGE_KEY); // 強制リセット
+                initializeDefaultRows();
+                updateMemberOptions();
+                updateResponsibilityCheckboxes(true);
+                calculate();
+                displayStorageInfo();
+            }
+        });
+
+        // --- 自動計算をトリガーする関数 ---
+        function triggerRecalculate() {
+            calculate();
+            saveDataToLocalStorage(); // 計算結果が更新されたらデータを保存する
+            displayStorageInfo(); // データ保存情報の表示を更新
+        }
+
+        // --- メンバー名の変更をハンドリングする関数 ---
+        function handleMemberNameChange() {
+            updateMemberOptions();
+            // メンバー名変更時に、すべての支払い項目の負担者チェックボックスを更新し、既存のチェック状態を維持
+            // 新しいメンバーが追加されたら、そのメンバーも自動的にチェックされるようにする
+            updateResponsibilityCheckboxes(false); // trueからfalseに変更 (既存チェック維持のため)
+            triggerRecalculate();
+        }
+
+        // --- タブ切り替え機能 ---
+        function openTab(evt, tabName) {
+            let i, tabcontent, tabbuttons;
+
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+
+            tabbuttons = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tabbuttons.length; i++) {
+                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+            }
+
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        // --- メンバー追加/削除機能 ---
+        function addMemberRow() {
+            addMemberRowInternal(''); // 新規追加時は空文字を渡し、プレースホルダーで表示
+        }
+
+        function addMemberRowInternal(initialName = '') { // initialNameを引数として受け取る
+            const memberList = document.getElementById('memberList');
+            const newRow = document.createElement('div');
+            newRow.className = 'item-row member-row';
+            const memberCount = memberList.children.length;
+            const defaultName = String.fromCharCode(65 + memberCount) + 'さん'; // Aさん, Bさん...
+            
+            // 修正点: value属性を削除し、placeholderを常に使用
+            newRow.innerHTML = `
+                <div>
+                    <label>メンバー名:</label>
+                    <input type="text" placeholder="${defaultName}" class="member-name">
+                    <span class="member-actual-cost">実質負担額: 0円</span>
+                </div>
+                <button type="button" class="delete-button">削除</button>
+            `;
+            memberList.appendChild(newRow);
+
+            const memberNameInput = newRow.querySelector('.member-name');
+
+            // ロードされた名前があれば、inputのvalueに設定
+            if (initialName) {
+                memberNameInput.value = initialName;
+            }
+
+            // イベントリスナーを動的に追加
+            memberNameInput.addEventListener('input', handleMemberNameChange);
+            newRow.querySelector('.delete-button').addEventListener('click', function() {
+                deleteMemberRow(this);
+            });
+
+            handleMemberNameChange(); // メンバー追加時も更新
+            saveDataToLocalStorage(); // データ追加時にも保存
+            displayStorageInfo(); // データ保存情報の表示を更新
+        }
+
+        function deleteMemberRow(button) {
+            const row = button.closest('.member-row');
+            const memberList = document.getElementById('memberList');
+            if (memberList.children.length > 1) { // 少なくとも1人は残す
+                row.remove();
+                handleMemberNameChange(); // メンバー削除時も更新
+                saveDataToLocalStorage(); // データ削除時にも保存
+                displayStorageInfo(); // データ保存情報の表示を更新
+            } else {
+                alert('メンバーは最低1人必要です。');
+            }
+        }
+
+        // --- 支払項目追加/削除機能 ---
+        function addPaymentRow() {
+            addPaymentRowInternal('', null); // 金額はnullを渡して、プレースホルダー表示
+        }
+
+        // 支払い行を追加する汎用関数
+        function addPaymentRowInternal(initialItemName = '', initialAmount = null, payer = null, responsibleMembers = null) { // initialAmountをnull許容に
+            const paymentList = document.getElementById('paymentList');
+            const newRow = document.createElement('div');
+            newRow.className = 'item-row payment-row';
+            const paymentItemCount = paymentList.children.length;
+            const defaultItemNameOptions = ["飲食代", "交通費", "宿泊費", "レジャー代", "雑費", "お土産代", "入場料"];
+            const defaultItemName = defaultItemNameOptions[paymentItemCount % defaultItemNameOptions.length];
+
+            // 修正点: 金額のplaceholderをより具体的な記載例に変更
+            newRow.innerHTML = `
+                <div>
+                    <label>項目名:</label>
+                    <input type="text" placeholder="${defaultItemName}" class="payment-item-name">
+                    <button type="button" class="voice-input-button" data-input-type="name">
+                        <i class="fas fa-microphone"></i> 音声入力
+                    </button>
+                </div>
+                <div>
+                    <label>金額:</label>
+                    <input type="number" min="0" placeholder="例: 3000" class="payment-amount">
+                    <span style="margin-left: 5px;">円</span>
+                    <button type="button" class="voice-input-button" data-input-type="amount">
+                        <i class="fas fa-microphone"></i> 音声入力
+                    </button>
+                </div>
+                <div>
+                    <label>支払った人:</label>
+                    <select class="payer-select"></select>
+                </div>
+                <div>
+                    <label>負担する人:</label>
+                    <div class="checkbox-group responsibility-checkboxes"></div>
+                </div>
+                <div class="payment-summary">
+                    <span class="subtotal-amount">小計: 0円</span>
+                    <span class="per-person-amount">1人あたり: 0円</span>
+                </div>
+                <button type="button" class="delete-button">削除</button>
+            `;
+            paymentList.appendChild(newRow);
+
+            const paymentItemNameInput = newRow.querySelector('.payment-item-name');
+            const paymentAmountInput = newRow.querySelector('.payment-amount');
+            const payerSelect = newRow.querySelector('.payer-select');
+            const subtotalSpan = newRow.querySelector('.subtotal-amount');
+            const perPersonSpan = newRow.querySelector('.per-person-amount');
+
+            // ロードされたitemNameとamountがあれば、inputのvalueに設定
+            if (initialItemName) {
+                paymentItemNameInput.value = initialItemName;
+            }
+            // initialAmountがnullでない（つまり、データから読み込まれた）場合のみ値を設定
+            if (initialAmount !== null && initialAmount !== undefined) {
+                paymentAmountInput.value = initialAmount;
+            }
+            
+            // 金額表示の初期化 (読み込み時にのみ使用)
+            subtotalSpan.textContent = `小計: ${initialAmount !== null ? initialAmount.toLocaleString() : '0'}円`;
+            // initialAmountがnullの場合は0として計算
+            perPersonSpan.textContent = `1人あたり: ${initialAmount !== null ? (initialAmount / (responsibleMembers ? responsibleMembers.length : (getMemberNames().length || 1))).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : '0'}円`;
+
+
+            // イベントリスナーを動的に追加
+            paymentItemNameInput.addEventListener('input', triggerRecalculate);
+            paymentAmountInput.addEventListener('input', triggerRecalculate);
+            payerSelect.addEventListener('change', triggerRecalculate);
+            newRow.querySelector('.responsibility-checkboxes').addEventListener('change', triggerRecalculate);
+            newRow.querySelector('.delete-button').addEventListener('click', function() {
+                deletePaymentRow(this);
+            });
+            newRow.querySelectorAll('.voice-input-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    startVoiceInput(this, this.dataset.inputType);
+                });
+            });
+
+            updateMemberOptions(); // 新しい行のselectを更新
+
+            // 負担者の初期値を設定
+            const checkboxesDiv = newRow.querySelector('.responsibility-checkboxes');
+            if (responsibleMembers && responsibleMembers.length > 0) {
+                 // ロードされたデータに基づいてチェック
+                const memberNames = getMemberNames();
+                memberNames.forEach(name => {
+                    const label = document.createElement('label');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = name;
+                    checkbox.checked = responsibleMembers.includes(name); // 既存データに基づいてチェック
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(name));
+                    checkboxesDiv.appendChild(label);
+                });
+            } else {
+                updateResponsibilityCheckboxes(true, newRow); // 新しい行は全員チェック
+            }
+
+            // 支払った人を設定
+            if (payer) {
+                if (Array.from(payerSelect.options).some(option => option.value === payer)) {
+                    payerSelect.value = payer;
+                } else if (payerSelect.options.length > 0) {
+                    payerSelect.value = payerSelect.options[0].value; // 読み取り時にpayerが存在しない場合、最初のメンバーをデフォルトにする
+                }
+            } else if (getMemberNames().length > 0) { // デフォルトで最初のメンバーを設定
+                payerSelect.value = getMemberNames()[0];
+            }
+
+            triggerRecalculate();
+            saveDataToLocalStorage(); // データ追加時にも保存
+            displayStorageInfo(); // データ保存情報の表示を更新
+        }
+
+        function deletePaymentRow(button) {
+            const row = button.closest('.payment-row');
+            const paymentList = document.getElementById('paymentList');
+            if (paymentList.children.length > 1) { // 少なくとも1項目は残す
+                row.remove();
+                triggerRecalculate();
+                saveDataToLocalStorage(); // データ削除時にも保存
+                displayStorageInfo(); // データ保存情報の表示を更新
+            } else {
+                alert('支払項目は最低1つ必要です。');
+            }
+        }
+
+        // --- メンバー情報更新ヘルパー関数 ---
+        function getMemberNames() {
+            const memberNameInputs = document.querySelectorAll('#memberList .member-name');
+            // valueが空の場合はplaceholderの値も考慮に入れる
+            return Array.from(memberNameInputs).map(input => input.value.trim() || input.placeholder.trim());
+        }
+
+        function updateMemberOptions() {
+            const memberNames = getMemberNames();
+            const payerSelects = document.querySelectorAll('.payer-select');
+
+            payerSelects.forEach(select => {
+                const selectedValue = select.value; // 現在選択されている値を保持
+                select.innerHTML = ''; // 一度クリア
+                memberNames.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    select.appendChild(option);
+                });
+                // 以前選択されていたメンバーがいればそれを選択、いなければ最初のメンバーを選択
+                if (memberNames.includes(selectedValue)) {
+                    select.value = selectedValue;
+                } else if (memberNames.length > 0) {
+                    select.value = memberNames[0];
+                }
+            });
+        }
+
+        // 負担者チェックボックスの更新
+        function updateResponsibilityCheckboxes(checkAllByDefault = false, targetRow = null) {
+            const memberNames = getMemberNames();
+            const responsibilityDivs = targetRow ? [targetRow.querySelector('.responsibility-checkboxes')] : document.querySelectorAll('.responsibility-checkboxes');
+
+            responsibilityDivs.forEach(div => {
+                const currentChecked = Array.from(div.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+                div.innerHTML = ''; // 一度クリア
+
+                memberNames.forEach(name => {
+                    const label = document.createElement('label');
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = name;
+                    
+                    // 新規追加の行で、かつ checkAllByDefault が true なら全てチェック
+                    // または既存の行で、以前チェックされていたメンバーならチェック
+                    if (checkAllByDefault || currentChecked.includes(name)) {
+                        checkbox.checked = true;
+                    }
+                    
+                    label.appendChild(checkbox);
+                    label.appendChild(document.createTextNode(name));
+                    div.appendChild(label);
+                });
+            });
+        }
+
+
+        // --- 計算ロジック ---
+        function calculate() {
+            const memberNames = getMemberNames();
+            const resultArea = document.getElementById('resultArea');
+            let hasError = false;
+
+            if (memberNames.length === 0) {
+                resultArea.innerHTML = `
+                    <h3>計算結果</h3>
+                    <p style="color: red;">メンバーを1人以上追加してください。</p>
+                `;
+                return;
+            }
+
+            const paymentRows = document.querySelectorAll('#paymentList .payment-row');
+            let totalAmount = 0;
+            const memberPaidAmounts = {};
+            const memberActualCosts = {};
+
+            memberNames.forEach(name => {
+                memberPaidAmounts[name] = 0;
+                memberActualCosts[name] = 0;
+            });
+
+            for (const row of paymentRows) {
+                const itemNameInput = row.querySelector('.payment-item-name');
+                const amountInput = row.querySelector('.payment-amount');
+                const payerSelect = row.querySelector('.payer-select');
+                const responsibleCheckboxes = row.querySelectorAll('.responsibility-checkboxes input[type="checkbox"]:checked');
+                const subtotalSpan = row.querySelector('.subtotal-amount');
+                const perPersonSpan = row.querySelector('.per-person-amount');
+
+                const itemName = itemNameInput.value.trim();
+                const amount = parseFloat(amountInput.value); // 空文字の場合はNaNになる
+                const payer = payerSelect.value;
+                const responsibleMembers = Array.from(responsibleCheckboxes).map(cb => cb.value);
+
+                // 金額が未入力（NaN）または負の場合
+                if (isNaN(amount) || amount < 0) {
+                    amountInput.style.borderColor = 'red';
+                    hasError = true;
+                    subtotalSpan.textContent = '小計: エラー';
+                    perPersonSpan.textContent = '1人あたり: エラー';
+                    continue; // この行の計算はスキップ
+                } else {
+                    amountInput.style.borderColor = ''; // エラーをリセット
+                }
+
+                if (!memberNames.includes(payer)) {
+                    // 支払者がメンバーリストに存在しない場合はエラーとして扱い、計算に含めないか、警告を出す
+                    hasError = true;
+                    console.warn(`支払者 '${payer}' がメンバーリストに存在しません。`);
+                    // この行の計算は続行するが、支払者への加算はしない
+                }
+
+                if (responsibleMembers.length === 0) {
+                    subtotalSpan.textContent = `小計: ${amount.toLocaleString()}円 (負担者なし)`;
+                    perPersonSpan.textContent = '1人あたり: 0円';
+                    continue;
+                }
+
+                const amountPerPerson = amount / responsibleMembers.length;
+                totalAmount += amount;
+
+                if (memberPaidAmounts[payer] !== undefined) {
+                    memberPaidAmounts[payer] += amount;
+                }
+
+                responsibleMembers.forEach(member => {
+                    if (memberActualCosts[member] !== undefined) {
+                        memberActualCosts[member] += amountPerPerson;
+                    }
+                });
+
+                subtotalSpan.textContent = `小計: ${amount.toLocaleString()}円`;
+                perPersonSpan.textContent = `1人あたり: ${amountPerPerson.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}円`;
+            }
+
+            let resultHtml = `
+                <h3>計算結果</h3>
+                <p><strong>総支払額: ${totalAmount.toLocaleString()}円</strong></p>
+                <h4>各メンバーの実質負担額:</h4>
+            `;
+
+            memberNames.forEach(name => {
+                // メンバー名入力フィールドを見つける際、valueとplaceholderの両方を考慮
+                const memberInput = document.querySelector(`#memberList .member-name[value="${name}"]`) ||
+                                    document.querySelector(`#memberList .member-name[placeholder="${name}"]`);
+                if (memberInput) {
+                    const actualCostElement = memberInput.closest('.member-row').querySelector('.member-actual-cost');
+                    if (actualCostElement) {
+                        actualCostElement.textContent = `実質負担額: ${Math.round(memberActualCosts[name] || 0).toLocaleString()}円`;
+                    }
+                }
+                resultHtml += `<p>${name}: ${Math.round(memberActualCosts[name] || 0).toLocaleString()}円</p>`;
+            });
+
+            resultHtml += `<h4>精算:</h4>`;
+            let settlementNeeded = false;
+
+            const diffs = {}; // 各メンバーの支払額と実質負担額の差 (正: 貸し, 負: 借り)
+            memberNames.forEach(name => {
+                diffs[name] = (memberPaidAmounts[name] || 0) - (memberActualCosts[name] || 0);
+            });
+
+            const lenders = []; // 余分に支払った人
+            const borrowers = []; // 不足している人
+
+            for (const name in diffs) {
+                if (diffs[name] > 0.5) { // 1円未満は無視
+                    lenders.push({ name: name, amount: diffs[name] });
+                } else if (diffs[name] < -0.5) { // 1円未満は無視
+                    borrowers.push({ name: name, amount: -diffs[name] }); // 借りなので正の値に変換
+                }
+            }
+
+            lenders.sort((a, b) => b.amount - a.amount);
+            borrowers.sort((a, b) => b.amount - a.amount);
+
+            let transactionCount = 0;
+            while (lenders.length > 0 && borrowers.length > 0) {
+                const lender = lenders[0];
+                const borrower = borrowers[0];
+
+                const transferAmount = Math.min(lender.amount, borrower.amount);
+
+                if (transferAmount > 0.5) { // 実際に精算が行われる場合
+                    resultHtml += `<p><strong>${borrower.name}</strong> が <strong>${lender.name}</strong> に <strong>${Math.round(transferAmount).toLocaleString()}円</strong> 支払う</p>`;
+                    lender.amount -= transferAmount;
+                    borrower.amount -= transferAmount;
+                    settlementNeeded = true;
+                    transactionCount++;
+                }
+
+                if (lender.amount <= 0.5) { // 貸しがなくなった
+                    lenders.shift();
+                }
+                if (borrower.amount <= 0.5) { // 借りがなくなった
+                    borrowers.shift();
+                }
+            }
+
+            if (!settlementNeeded && transactionCount === 0) {
+                resultHtml += `<p>精算は不要です。</p>`;
+            }
+
+            if (hasError) {
+                resultArea.innerHTML = `
+                    <h3>計算結果</h3>
+                    <p style="color: orange;">一部の金額入力に問題があるため、正しく計算できない可能性があります。</p>
+                    ${resultHtml}
+                `;
+            } else {
+                resultArea.innerHTML = resultHtml;
+            }
+        }
+
+
+        // --- データ保存・読み込み・リセット ---
+        const LOCAL_STORAGE_KEY = 'wakewakeToolData';
+        const STORAGE_EXPIRATION_DAYS = 10; // データ保持期間（日数）
+
+        function saveDataToLocalStorage() {
+            const memberElements = document.querySelectorAll('#memberList .member-row');
+            const paymentElements = document.querySelectorAll('#paymentList .payment-row');
+
+            const members = Array.from(memberElements).map(row => {
+                const memberInput = row.querySelector('.member-name');
+                return {
+                    // 入力値があればそれを、なければプレースホルダーの値を保存
+                    name: memberInput.value.trim() || memberInput.placeholder.trim()
+                };
+            });
+
+            const payments = Array.from(paymentElements).map(row => {
+                const itemInput = row.querySelector('.payment-item-name');
+                const amountInput = row.querySelector('.payment-amount');
+                const responsibleCheckboxes = row.querySelectorAll('.responsibility-checkboxes input[type="checkbox"]:checked');
+                return {
+                    itemName: itemInput.value.trim() || itemInput.placeholder.trim(),
+                    amount: parseFloat(amountInput.value) || 0, // 金額は数値として保存、未入力なら0
+                    payer: row.querySelector('.payer-select').value,
+                    responsibleMembers: Array.from(responsibleCheckboxes).map(cb => cb.value)
+                };
+            });
+
+            const dataToSave = {
+                members: members,
+                payments: payments,
+                timestamp: Date.now() // 保存日時を記録
+            };
+
+            try {
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+            } catch (e) {
+                console.error("Failed to save data to localStorage:", e);
+                alert("データの保存に失敗しました。ブラウザのストレージ容量を確認してください。");
+            }
+        }
+
+        function loadDataFromLocalStorage() {
+            const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedData) {
+                let data;
+                try {
+                    data = JSON.parse(savedData);
+                } catch (e) {
+                    console.error("Failed to parse saved data:", e);
+                    alert("保存されたデータが破損しています。データをリセットしてやり直してください。");
+                    localStorage.removeItem(LOCAL_STORAGE_KEY); // 破損データを削除
+                    initializeDefaultRows(); // デフォルトで初期化
+                    return;
+                }
+
+                // データが期限切れでないかチェック
+                if (Date.now() - data.timestamp > STORAGE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000) {
+                    console.log('保存されたデータは期限切れです。');
+                    localStorage.removeItem(LOCAL_STORAGE_KEY);
+                    // 期限切れの場合は、デフォルトデータを設定する
+                    initializeDefaultRows();
+                    return;
+                }
+
+                // 既存のメンバーと支払項目をクリア
+                document.getElementById('memberList').innerHTML = '';
+                document.getElementById('paymentList').innerHTML = '';
+
+                // メンバーをロード
+                if (data.members && data.members.length > 0) {
+                    data.members.forEach(member => {
+                        addMemberRowInternal(member.name); // valueに設定するためにnameを渡す
+                    });
+                } else {
+                    // メンバーデータがない場合はデフォルトを追加 (プレースホルダー表示)
+                    addMemberRowInternal('');
+                    addMemberRowInternal('');
+                }
+
+                // 支払項目をロード
+                if (data.payments && data.payments.length > 0) {
+                    data.payments.forEach(payment => {
+                        addPaymentRowInternal(payment.itemName, payment.amount, payment.payer, payment.responsibleMembers);
+                    });
+                } else {
+                    // 支払いデータがない場合はデフォルトを追加 (プレースホルダー表示)
+                    addPaymentRowInternal('', null); // 金額はnullを渡してプレースホルダーを表示
+                }
+
+            } else {
+                 // ローカルストレージにデータがない場合、初期状態（デフォルトメンバーと支払項目）を設定
+                initializeDefaultRows();
+            }
+        }
+
+        // 初期メンバーと支払項目を設定するヘルパー関数
+        function initializeDefaultRows() {
+            // memberList と paymentList が空の場合のみ追加
+            if (document.getElementById('memberList').children.length === 0) {
+                addMemberRowInternal(''); // プレースホルダーで追加
+                addMemberRowInternal(''); // プレースホルダーで追加
+            }
+            if (document.getElementById('paymentList').children.length === 0) {
+                addPaymentRowInternal('', null); // プレースホルダーで追加 (金額はnull)
+            }
+        }
+
+        function resetAllData() {
+            if (confirm('全てのデータをリセットしますか？この操作は元に戻せません。')) {
+                try {
+                    localStorage.removeItem(LOCAL_STORAGE_KEY);
+                } catch (e) {
+                    console.error("Failed to clear localStorage:", e);
+                    alert("データのリセットに失敗しました。");
+                }
+                // ページをリロードして初期状態に戻す
+                location.reload();
+            }
+        }
+
+        function displayStorageInfo() {
+            const storageInfoDiv = document.getElementById('storageInfo');
+            const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                const savedDate = new Date(data.timestamp);
+                const expiryDate = new Date(data.timestamp + STORAGE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000);
+                storageInfoDiv.innerHTML = `
+                    入力データは自動保存されています。<br>
+                    保存日時: <strong>${savedDate.toLocaleString()}</strong><br>
+                    有効期限: <strong>${expiryDate.toLocaleString()}</strong>
+                `;
+            } else {
+                storageInfoDiv.innerHTML = `
+                    データは保存されていません。入力を開始すると自動保存されます。<br>
+                    保存データは最終更新から約${STORAGE_EXPIRATION_DAYS}日間保持されます。
+                `;
+            }
+        }
+
+        // --- 音声入力ロジック ---
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        let recognition = null; // 音声認識オブジェクトを保持する変数
+        let currentInputField = null; // 現在音声入力を行うinput要素を保持
+        let currentButton = null; // 現在音声入力を行っているボタンを保持
+
+        function startVoiceInput(button, inputType) {
+            if (!SpeechRecognition) {
+                alert('お使いのブラウザは音声入力に対応していません。ChromeまたはSafariをお試しください。');
+                return;
+            }
+
+            // 既に認識中の場合は、その認識を停止
+            if (recognition && recognition.isRecognizing) { // isRecognizing はカスタムプロパティ
+                recognition.stop();
+                recognition.isRecognizing = false;
+                // 元のボタンの表示に戻す
+                if (currentButton) {
+                    currentButton.innerHTML = '<i class="fas fa-microphone"></i> 音声入力';
+                    currentButton.style.backgroundColor = '#007bff';
+                }
+                recognition = null; // リセット
+                currentInputField = null;
+                currentButton = null;
+                return;
+            }
+
+            // 新しい認識を開始
+            currentInputField = (inputType === 'name') ?
+                                 button.closest('div').querySelector('.payment-item-name') :
+                                 button.closest('div').querySelector('.payment-amount');
+            currentButton = button; // 現在のボタンを記憶
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ja-JP'; // 日本語に設定
+            recognition.interimResults = false; // 途中の結果を返さない (最終結果のみ取得)
+            recognition.maxAlternatives = 1; // 候補は1つだけ
+
+            // 認識開始時のUI変更
+            currentButton.innerHTML = '<i class="fas fa-circle" style="color: red;"></i> 話して入力中...';
+            currentButton.style.backgroundColor = '#dc3545'; // 赤くする
+            recognition.isRecognizing = true; // 認識中フラグ
+
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const last = event.results.length - 1;
+                let transcript = event.results[last][0].transcript;
+                console.log('認識結果:', transcript); // デバッグ用
+
+                if (currentInputField) {
+                    if (inputType === 'amount') {
+                        // 金額の場合、数字と単位を考慮してパース
+                        let parsedAmount = parseAmountFromVoice(transcript);
+                        currentInputField.value = parsedAmount;
+                    } else {
+                        // 項目名の場合、そのまま入力
+                        currentInputField.value = transcript.trim();
+                    }
+                }
+                triggerRecalculate(); // 自動計算をトリガー
+            };
+
+            // 音声入力が終了した時の処理 (ユーザーが話し終えた時や、一定時間無音だった時)
+            recognition.onspeechend = () => {
+                if (recognition) {
+                    recognition.stop();
+                }
+            };
+
+            // エラー発生時の処理 (マイクの許可がない、ネットワークエラーなど)
+            recognition.onerror = (event) => {
+                console.error('音声認識エラー:', event.error);
+                let errorMessage = '音声認識に失敗しました。';
+                if (event.error === 'not-allowed') {
+                    errorMessage += ' マイクの使用が許可されていません。ブラウザの設定をご確認ください。';
+                } else if (event.error === 'no-speech') {
+                    errorMessage += ' 音声が検出されませんでした。もう一度お試しください。';
+                } else if (event.error === 'network') {
+                    errorMessage += ' ネットワークエラーが発生しました。インターネット接続をご確認ください。';
+                } else if (event.error === 'aborted') {
+                    // ユーザーが手動で停止した場合など、エラーとして扱わない
+                    console.log('音声認識が中断されました。');
+                } else {
+                    errorMessage += ` エラーコード: ${event.error}`;
+                }
+
+                if (event.error !== 'aborted') { // abortedはエラーとして表示しない
+                    alert(errorMessage);
+                }
+
+                if (recognition) {
+                    recognition.stop(); // エラー時も停止イベントを発生させる
+                }
+            };
+
+            // 認識終了時のクリーンアップ (成功・失敗に関わらず、onspeechend/onerrorの後に呼ばれる)
+            recognition.onend = () => {
+                if (currentButton) { // currentButtonがnullでないことを確認
+                    currentButton.innerHTML = '<i class="fas fa-microphone"></i> 音声入力';
+                    currentButton.style.backgroundColor = '#007bff'; // 元の色に戻す
+                }
+                recognition = null; // recognitionオブジェクトをリセット
+                currentInputField = null;
+                currentButton = null;
+            };
+        }
+
+        // 音声認識結果から金額をパースする専用関数 (万単位の認識精度向上版)
+        function parseAmountFromVoice(text) {
+            let amount = 0; // 初期値を0に設定
+            text = text.trim(); // 前後の空白を削除
+
+            // 1. まずはアラビア数字（0-9）とカンマ、ピリオドを含むパターンを優先して抽出
+            let numericMatch = text.match(/^(\d{1,3}(?:[,\.]\d{3})*(?:\.\d+)?)(?:円|縁|yen|えん)?$/i);
+            if (numericMatch && numericMatch[1]) {
+                amount = parseFloat(numericMatch[1].replace(/,/g, ''));
+                if (!isNaN(amount)) {
+                    return amount;
+                }
+            }
+
+            // 2. 数字が見つからない場合、漢字の数字表現を試す
+            const numberMap = {
+                'ゼロ': 0, 'れい': 0, '〇': 0,
+                '一': 1, 'いち': 1, '壱': 1,
+                '二': 2, 'に': 2, '弐': 2,
+                '三': 3, 'さん': 3, '参': 3,
+                '四': 4, 'よん': 4, 'し': 4,
+                '五': 5, 'ご': 5, '伍': 5,
+                '六': 6, 'ろく': 6, '陸': 6,
+                '七': 7, 'なな': 7, 'しち': 7, '漆': 7,
+                '八': 8, 'はち': 8, '八': 8,
+                '九': 9, 'きゅう': 9, 'く': 9,
+            };
+            const unitMap = {
+                '十': 10, 'じゅう': 10, '拾': 10,
+                '百': 100, 'ひゃく': 100, '佰': 100, '陌': 100,
+                '千': 1000, 'せん': 1000, '仟': 1000, '阡': 1000,
+                '万': 10000, 'まん': 10000,
+            };
+            // 補助的な読み方に対応 (例: ごぜん -> 5000)
+            const specialReadings = {
+                'ごぜん': 5000,
+                'はっせん': 8000,
+                'ろくせん': 6000,
+                'ななせん': 7000,
+                'さんぜん': 3000,
+                'にせん': 2000,
+                'いっせん': 1000,
+                'はっぴゃく': 800,
+                'ろっぴゃく': 600,
+                'さんびゃく': 300,
+                'ひゃく': 100,
+                'じゅう': 10,
+                'はちじゅう': 80,
+                'ろくじゅう': 60,
+                'ななじゅう': 70,
+            };
+
+            // まず、特殊な読み方があれば優先的に処理
+            for (const key in specialReadings) {
+                if (text.includes(key)) {
+                    // 例: 「ごぜんさんびゃくえん」のような場合は「ごぜん」だけをパースしない
+                    // しかし、"ごぜんえん" のように単独であれば優先する
+                    if (text === `${key}円` || text === `${key}`) {
+                        return specialReadings[key];
+                    }
+                }
+            }
+
+
+            let currentTotal = 0; // 最終的な合計金額
+            let subTotal = 0;     // 万未満のブロックの合計 (例: 5千3百円の場合の5300)
+            let currentNum = 0;   // 現在処理中の数字 (例: 「ご」が「五千」の「ご」)
+
+            // テキストを漢字数字、単位、その他（円など）に分解
+            // \d+ はアラビア数字の並びに対応
+            // [一-九] は漢数字の一桁に対応
+            // (?: ...) は非キャプチャグループで、より多くの読み方（じゅう、ひゃくなど）に対応
+            // | の後に続くのは「円」の読み方や、全角数字
+            const tokens = text.match(/(\d+|[一二三四五六七八九]|[じゅう|十|拾]|[ひゃく|百|佰|陌]|[せん|千|仟|阡]|[まん|万]|[えん|円|縁]|ゼロ|れい|〇|[０-９])/g);
+            
+            if (!tokens) return ''; // トークンがない場合は空を返す
+
+            console.log("Tokens:", tokens); // デバッグ用
+
+            for (let i = 0; i < tokens.length; i++) {
+                const token = tokens[i].toLowerCase();
+                let numVal = parseInt(token); // アラビア数字を試す
+
+                if (!isNaN(numVal)) { // アラビア数字の場合
+                    currentNum = numVal;
+                } else if (numberMap[token] !== undefined) { // 漢字一桁の数字
+                    currentNum = numberMap[token];
+                } else if (unitMap[token] !== undefined) { // 単位
+                    const unitValue = unitMap[token];
+
+                    if (unitValue >= 10000) { // 万の単位
+                        // 万の前に数字（currentNum や subTotal）がなければ1とみなす
+                        // 例：「いちまんえん」「まんえん」
+                        currentTotal += (subTotal === 0 && currentNum === 0 ? 1 : subTotal + currentNum) * unitValue;
+                        subTotal = 0; // 万で区切られたのでリセット
+                        currentNum = 0;
+                    } else { // 千、百、十の単位
+                        // 単位の前に数字がなければ1とみなす（例：「百円」 -> 100円）
+                        // 「じゅうえん」の場合、currentNumは0、unitValueは10 => subTotal += 1 * 10
+                        subTotal += (currentNum === 0 ? 1 : currentNum) * unitValue;
+                        currentNum = 0; // 数字をリセット
+                    }
+                }
+                // 「円」「縁」「えん」は金額には影響しないため無視
+            }
+
+            // 最後に残ったcurrentNumとsubTotalをcurrentTotalに加算
+            // 例: 「にせんさんびゃくえん」
+            // 1. 「に」: currentNum = 2
+            // 2. 「せん」: subTotal += 2 * 1000 => subTotal = 2000, currentNum = 0
+            // 3. 「さん」: currentNum = 3
+            // 4. 「びゃく」: subTotal += 3 * 100 => subTotal = 2000 + 300 = 2300, currentNum = 0
+            // ループ終了後: amount = currentTotal + subTotal + currentNum;
+            // 修正：最後の行で currentTotal, subTotal, currentNum が正しく足し合わされるように
+            amount = currentTotal + subTotal + currentNum;
+
+            if (isNaN(amount) || amount < 0) { // 結局金額を認識できなかった場合や負の数の場合は空文字列を返す
+                return '';
+            }
+            return amount;
+        }
+
+    </script>
+</body>
+</html>
