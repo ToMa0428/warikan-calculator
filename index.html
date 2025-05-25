@@ -941,115 +941,140 @@
             }
         }
 
-        // --- 音声入力ロジック ---
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+// --- 音声入力ロジック ---
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        let recognition = null; // 音声認識オブジェクトを保持する変数
-        let currentInputField = null; // 現在音声入力を行うinput要素を保持
-        let currentButton = null; // 現在音声入力を行っているボタンを保持
+                let recognition = null; // 音声認識オブジェクトを保持する変数
+                let currentInputField = null; // 現在音声入力を行うinput要素を保持
+                let currentButton = null; // 現在音声入力を行っているボタンを保持
+                let recognitionTimeoutId = null; // ★ここに追加★
 
-        function startVoiceInput(button, inputType) {
-            if (!SpeechRecognition) {
-                alert('お使いのブラウザは音声入力に対応していません。ChromeまたはSafariをお試しください。');
-                return;
-            }
+                const VOICE_INPUT_DURATION_MS = 3000; // ★ここに追加★
 
-            // 既に認識中の場合は、その認識を停止
-            if (recognition && recognition.isRecognizing) { // isRecognizing はカスタムプロパティ
-                recognition.stop();
-                recognition.isRecognizing = false;
-                // 元のボタンの表示に戻す
-                if (currentButton) {
-                    currentButton.innerHTML = '<i class="fas fa-microphone"></i> 音声入力';
-                    currentButton.style.backgroundColor = '#007bff';
-                }
-                recognition = null; // リセット
-                currentInputField = null;
-                currentButton = null;
-                return;
-            }
-
-            // 新しい認識を開始
-            currentInputField = (inputType === 'name') ?
-                                 button.closest('div').querySelector('.payment-item-name') :
-                                 button.closest('div').querySelector('.payment-amount');
-            currentButton = button; // 現在のボタンを記憶
-
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ja-JP'; // 日本語に設定
-            recognition.continuous = false; // ★ここを false に変更★
-            recognition.interimResults = false; // 途中の結果を返さない (最終結果のみ取得)
-            recognition.maxAlternatives = 1; // 候補は1つだけ
-
-            // 認識開始時のUI変更
-            currentButton.innerHTML = '<i class="fas fa-circle" style="color: red;"></i> 話して入力中...';
-            currentButton.style.backgroundColor = '#dc3545'; // 赤くする
-            recognition.isRecognizing = true; // 認識中フラグ
-
-            recognition.start();
-
-            recognition.onresult = (event) => {
-                const last = event.results.length - 1;
-                let transcript = event.results[last][0].transcript;
-                console.log('認識結果:', transcript); // デバッグ用
-
-                if (currentInputField) {
-                    if (inputType === 'amount') {
-                        // 金額の場合、数字と単位を考慮してパース
-                        let parsedAmount = parseAmountFromVoice(transcript);
-                        currentInputField.value = parsedAmount;
-                    } else {
-                        // 項目名の場合、そのまま入力
-                        currentInputField.value = transcript.trim();
+                function startVoiceInput(button, inputType) {
+                    if (!SpeechRecognition) {
+                        alert('お使いのブラウザは音声入力に対応していません。ChromeまたはSafariをお試しください。');
+                        return;
                     }
-                }
-                triggerRecalculate(); // 自動計算をトリガー
-            };
 
-            // 音声入力が終了した時の処理 (ユーザーが話し終えた時や、一定時間無音だった時)
-            recognition.onspeechend = () => {
-                if (recognition) {
-                    recognition.stop();
-                }
-            };
+                    // 既に認識中の場合は、その認識を停止
+                    if (recognition && recognition.isRecognizing) { // isRecognizing はカスタムプロパティ
+                        recognition.stop();
+                        clearTimeout(recognitionTimeoutId); // ★ここにも追加★
+                        recognition.isRecognizing = false;
+                        // 元のボタンの表示に戻す
+                        if (currentButton) {
+                            currentButton.innerHTML = '<i class="fas fa-microphone"></i> 音声入力';
+                            currentButton.style.backgroundColor = '#007bff';
+                        }
+                        recognition = null; // リセット
+                        currentInputField = null;
+                        currentButton = null;
+                        return;
+                    }
 
-            // エラー発生時の処理 (マイクの許可がない、ネットワークエラーなど)
-            recognition.onerror = (event) => {
-                console.error('音声認識エラー:', event.error);
-                let errorMessage = '音声認識に失敗しました。';
-                if (event.error === 'not-allowed') {
-                    errorMessage += ' マイクの使用が許可されていません。ブラウザの設定をご確認ください。';
-                } else if (event.error === 'no-speech') {
-                    errorMessage += ' 音声が検出されませんでした。もう一度お試しください。';
-                } else if (event.error === 'network') {
-                    errorMessage += ' ネットワークエラーが発生しました。インターネット接続をご確認ください。';
-                } else if (event.error === 'aborted') {
-                    // ユーザーが手動で停止した場合など、エラーとして扱わない
-                    console.log('音声認識が中断されました。');
-                } else {
-                    errorMessage += ` エラーコード: ${event.error}`;
-                }
+                    // 新しい認識を開始
+                    currentInputField = (inputType === 'name') ?
+                                         button.closest('div').querySelector('.payment-item-name') :
+                                         button.closest('div').querySelector('.payment-amount');
+                    currentButton = button; // 現在のボタンを記憶
 
-                if (event.error !== 'aborted') { // abortedはエラーとして表示しない
-                    alert(errorMessage);
-                }
+                    recognition = new SpeechRecognition();
+                    recognition.lang = 'ja-JP'; // 日本語に設定
+                    recognition.continuous = false; // ★ここを false に変更★
+                    recognition.interimResults = false; // 途中の結果を返さない (最終結果のみ取得)
+                    recognition.maxAlternatives = 1; // 候補は1つだけ
 
-                if (recognition) {
-                    recognition.stop(); // エラー時も停止イベントを発生させる
-                }
-            };
+                    // 認識開始時のUI変更
+                    currentButton.innerHTML = '<i class="fas fa-circle" style="color: red;"></i> 話して入力中...';
+                    currentButton.style.backgroundColor = '#dc3545'; // 赤くする
+                    recognition.isRecognizing = true; // 認識中フラグ
 
-            // 認識終了時のクリーンアップ (成功・失敗に関わらず、onspeechend/onerrorの後に呼ばれる)
-            recognition.onend = () => {
-                if (currentButton) { // currentButtonがnullでないことを確認
-                    currentButton.innerHTML = '<i class="fas fa-microphone"></i> 音声入力';
-                    currentButton.style.backgroundColor = '#007bff'; // 元の色に戻す
+                    recognition.start();
+
+                    // ★ここに追加★
+                    recognitionTimeoutId = setTimeout(() => {
+                        if (recognition && recognition.isRecognizing) {
+                            console.log(`音声入力が${VOICE_INPUT_DURATION_MS / 1000}秒経過したため、強制停止します。`);
+                            recognition.stop();
+                        }
+                    }, VOICE_INPUT_DURATION_MS);
+
+
+                    recognition.onresult = (event) => {
+                        clearTimeout(recognitionTimeoutId); // ★ここに追加★
+                        const last = event.results.length - 1;
+                        let transcript = event.results[last][0].transcript;
+                        console.log('認識結果:', transcript); // デバッグ用
+
+                        if (currentInputField) {
+                            if (inputType === 'amount') {
+                                // 金額の場合、数字と単位を考慮してパース
+                                let parsedAmount = parseAmountFromVoice(transcript);
+                                currentInputField.value = parsedAmount;
+                            } else {
+                                // 項目名の場合、そのまま入力
+                                currentInputField.value = transcript.trim();
+                            }
+                        }
+                        triggerRecalculate(); // 自動計算をトリガー
+                        // 結果が返ってきたら、その時点でタイマーをクリアして停止
+                        if (recognition) { // recognitionがまだ存在することを確認
+                            recognition.stop(); // onendイベントが発火し、クリーンアップされる
+                        }
+                    };
+
+                    // 音声入力が終了した時の処理 (ユーザーが話し終えた時や、一定時間無音だった時)
+                    // このイベントはブラウザの実装に依存するため、タイマーと併用
+                    recognition.onspeechend = () => {
+                        if (recognition) {
+                            console.log('音声認識エンジンが話し終わりを検出しました。');
+                            recognition.stop(); // onendイベントが発火し、クリーンアップされる
+                        }
+                    };
+
+                    // エラー発生時の処理 (マイクの許可がない、ネットワークエラーなど)
+                    recognition.onerror = (event) => {
+                        console.error('音声認識エラー:', event.error);
+                        let errorMessage = '音声認識に失敗しました。';
+                        if (event.error === 'not-allowed') {
+                            errorMessage += ' マイクの使用が許可されていません。ブラウザの設定をご確認ください。';
+                        } else if (event.error === 'no-speech') {
+                            errorMessage += ' 音声が検出されませんでした。もう一度お試しください。';
+                        } else if (event.error === 'network') {
+                            errorMessage += ' ネットワークエラーが発生しました。インターネット接続をご確認ください。';
+                        } else if (event.error === 'aborted') {
+                            // ユーザーが手動で停止した場合など、エラーとして扱わない
+                            console.log('音声認識が中断されました。');
+                        } else {
+                            errorMessage += ` エラーコード: ${event.error}`;
+                        }
+
+                        if (event.error !== 'aborted') { // abortedはエラーとして表示しない
+                            alert(errorMessage);
+                        }
+
+                        if (recognition) {
+                            recognition.stop(); // エラー時も停止イベントを発生させる
+                        }
+                        clearTimeout(recognitionTimeoutId); // ★ここに追加★
+                    };
+
+                    // 認識終了時のクリーンアップ (成功・失敗に関わらず、onspeechend/onerrorの後に呼ばれる)
+                    recognition.onend = () => {
+                        clearTimeout(recognitionTimeoutId); // ★ここに追加★
+                        if (currentButton) { // currentButtonがnullでないことを確認
+                            currentButton.innerHTML = '<i class="fas fa-microphone"></i> 音声入力';
+                            currentButton.style.backgroundColor = '#007bff'; // 元の色に戻す
+                        }
+                        if (recognition) { // recognitionがまだ存在する場合にのみisRecognizingをfalseに
+                             recognition.isRecognizing = false;
+                        }
+                        recognition = null; // recognitionオブジェクトをリセット
+                        currentInputField = null;
+                        currentButton = null;
+                    };
                 }
-                recognition = null; // recognitionオブジェクトをリセット
-                currentInputField = null;
-                currentButton = null;
-            };
-        }
 
         // 音声認識結果から金額をパースする専用関数 (万単位の認識精度向上版)
         function parseAmountFromVoice(text) {
