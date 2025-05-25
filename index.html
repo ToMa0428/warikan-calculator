@@ -977,6 +977,7 @@
 
             recognition = new SpeechRecognition();
             recognition.lang = 'ja-JP'; // 日本語に設定
+            recognition.continuous = false; // ★ここを false に変更★
             recognition.interimResults = false; // 途中の結果を返さない (最終結果のみ取得)
             recognition.maxAlternatives = 1; // 候補は1つだけ
 
