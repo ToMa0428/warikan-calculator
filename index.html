@@ -303,7 +303,12 @@
                 margin-top: 10px;
                 justify-content: center; /* 中央揃え */
             }
+        #resultArea,
+        .reset-button,
+        #storageInfo {
+            display: none;
         }
+
     </style>
 </head>
 <body>
@@ -342,27 +347,22 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+		document.addEventListener('DOMContentLoaded', function() {
             try {
                 loadDataFromLocalStorage(); // ページロード時にローカルストレージからデータを読み込む
                 updateMemberOptions(); // メンバーのドロップダウンを更新
-                updateResponsibilityCheckboxes(true); // 負担者のチェックボックスを更新し、全てチェック
-                calculate(); // 初期表示で計算
-                displayStorageInfo(); // データ保存情報の表示
+                // updateResponsibilityCheckboxes(true); // この行は削除
+                openTab(null, 'memberTab'); // ページロード時はデフォルトの「メンバー設定」タブを開く
             } catch (e) {
                 console.error("Initialization failed:", e);
                 alert("ページの初期化中にエラーが発生しました。データをリセットしてやり直してください。");
-                // エラーが発生した場合、最低限の表示はできるようにデフォルトデータを読み込む
-                // 注意: これまでの試行錯誤でローカルストレージに不正なデータが残っている可能性があるので、
-                // 強制的にリセットしてからデフォルトをロードするように変更
                 localStorage.removeItem(LOCAL_STORAGE_KEY); // 強制リセット
                 initializeDefaultRows();
                 updateMemberOptions();
-                updateResponsibilityCheckboxes(true);
-                calculate();
-                displayStorageInfo();
+                // updateResponsibilityCheckboxes(true); // この行も削除
+                openTab(null, 'memberTab');
             }
-        });
+        });         
 
         // --- 自動計算をトリガーする関数 ---
         function triggerRecalculate() {
@@ -380,7 +380,7 @@
             triggerRecalculate();
         }
 
-        // --- タブ切り替え機能 ---
+// --- タブ切り替え機能 ---
         function openTab(evt, tabName) {
             let i, tabcontent, tabbuttons;
 
@@ -391,11 +391,43 @@
 
             tabbuttons = document.getElementsByClassName("tab-button");
             for (i = 0; i < tabbuttons.length; i++) {
-                tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
+                // ここを修正: activeクラスを確実に除去
+                tabbuttons[i].classList.remove("active");
             }
 
+            // 指定されたタブコンテンツを表示
             document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.className += " active";
+
+            // ★ここを修正/追加★
+            // タブボタンのアクティブ状態を設定
+            if (evt && evt.currentTarget) {
+                // クリックイベント経由の場合
+                evt.currentTarget.classList.add("active");
+            } else {
+                // JavaScriptから直接呼び出された場合 (DOMContentLoaded時など)
+                // 該当するtabNameのボタンを探してアクティブにする
+                const targetButton = document.querySelector(`.tab-button[onclick*="'${tabName}'"]`);
+                if (targetButton) {
+                    targetButton.classList.add("active");
+                }
+            }
+            // ★ここまで修正/追加★
+
+            // 計算結果エリア、リセットボタン、保存情報の要素を取得
+            const resultArea = document.getElementById('resultArea');
+            const resetBtn = document.querySelector('.reset-button');
+            const storageInfo = document.getElementById('storageInfo');
+
+            // アクティブなタブが「memberTab」であれば、これらの要素を非表示にする
+            if (tabName === 'memberTab') {
+                resultArea.style.display = 'none';
+                resetBtn.style.display = 'none';
+                storageInfo.style.display = 'none';
+            } else { // それ以外のタブ（例: paymentTab）であれば、これらの要素を表示する
+                resultArea.style.display = 'block';
+                resetBtn.style.display = 'block';
+                storageInfo.style.display = 'block';
+            }
         }
 
         // --- メンバー追加/削除機能 ---
